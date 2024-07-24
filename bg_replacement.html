@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>
+    Background replacement using BodyPix.
+  </title>
+  <style>
+    .container {
+      position: relative;
+    }
+
+    .topright {
+      position: absolute;
+      top: 8px;
+      right: 16px;
+      font-size: 18px;
+    }
+
+    input[type=number]::-webkit-inner-spin-button {
+      opacity: 1
+    }
+
+</style>
+</head>
+<script src='https://www.dukelearntoprogram.com/course1/common/js/image/SimpleImage.js'></script>
+
+<!-- Load TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.1.0">
+</script> 
+<!-- Load BodyPix -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0.5"></script>
+
+<body>
+  <div class="container">
+    <a href="ml5/ml5-index.html" class="topright"><h2>ML5</h2></a>
+    <center>
+      <h2>Bodypix</h2>
+      <video id="video" width="640" height="480" autoplay style="border: 1px solid #00FF00;">
+      </video>
+      <br>
+      <button id="startVideo" type="button" onclick="startVideoStream()">Start Video</button>
+      <button id="stopVideo" type="button" onclick="stopVideoStream()">Stop Video</button>
+    </center>
+  </div>
+  <br><br><br>
+  <div>
+    <center>
+      <label for="myfile">Select a file </label>
+      <input type="file" accept="image/*" id="imgfile" name="file" onchange="displayImage()">
+      <br><br>
+      <button id="blurVideoButton" type="button" onclick="blurVideo()">Blur</button>
+      <button id="modifyVideoBackgroundButton" type="button" onclick="modifyVideoBackground()">Replace Background</button>
+     <!--  <button id="drawMaskVideoButton" type="button" onclick="drawMaskClicked()">Draw mask</button> -->
+      <br><br>
+      <canvas id="canvas" width="640" height="480" style="border: 1px solid #00FF00;"></canvas>
+      <br>
+      </canvas>
+      <fieldset>
+        <legend>Blur parameters</legend>
+        <label for="backgroundBlurAmountSlider">Background Blur : </label>
+        <input id="backgroundBlurAmountSlider" type="range" min="0" max="20">
+        <span id="backgroundBlurAmountSliderValue" style="padding-right: 3em"></span>
+        
+        <label for="edgeBlurAmountSlider"> Edge Blur :</label>
+        <input id="edgeBlurAmountSlider" type="range" min="0" max="20">
+        <span id="edgeBlurAmountSliderValue" style="padding-right: 3em"></span>
+      </fieldset>
+      <fieldset>
+      <legend>BodyPix load params</legend>
+      <label for="architecture">architecture</label>
+      <select id="architecture" style="margin-right: 3em">
+        <!-- <option value="MobileNetV1">MobileNetV1</option>
+        <option value="ResNet50">ResNet50</option> -->
+      </select>
+      <label for="outputStride">outputStride</label>
+      <select id="outputStride" style="margin-right: 3em">
+        <!-- <option value=8>8</option>
+        <option value=16>16</option>
+        <option value=32>32</option> -->
+      </select>
+      <label for="multiplier">multiplier</label>
+      <!-- <input type="number" id="multiplier" name="multi" min="0.0" max="1.0" step="0.1" value="1.0"> -->
+      <select id="multiplier" style="margin-right: 3em">
+        
+      </select>
+      <label for="quantBytes">quantBytes</label>
+      <select id="quantBytes" style="margin-right: 3em">
+        <!-- <option value="4">4</option>
+        <option value="2">2</option>
+        <option value="1">1</option> -->
+      </select>
+      <!-- <button id="updateParamsButton" type="button" onclick="onUpdateParams()">Update</button> -->
+    </fieldset>
+
+    <fieldset>
+      <legend>Segmentation params</legend>
+      <label for="internalResolution">internalResolution</label>
+      <select id="internalResolution" style="margin-right: 3em">
+        <<!-- option value="full">full</option>
+        <option value="high" selected>high</option>
+        <option value="medium">medium</option>
+        <option value="low">low</option> -->
+      </select>
+      <label for="segmentationThreshold">segmentationThreshold</label>
+      <input type="number" id="segmentationThreshold" name="segmentation" min=0.0 max=1.0 step=0.05>
+
+    <!--   <label for="flipHorizontal">flipHorizontal</label>
+      <input type="checkbox" id="flipHorizontal" checked name="horizontal"> -->
+    </fieldset>
+    </center>
+  </div>
+  <br><br>
+  <fieldset>
+    <legend>Context</legend>
+    <p>
+      <h3> <a href="https://github.com/tensorflow/tfjs-models/tree/master/body-pix">BodyPix</a> (Real-time person and body part segmentation in the browser using TensorFlow.js)</h4>
+      
+      <h4><u>Config params to load bodyPix</u></h5>
+      
+      <b>architecture: </b>Can be either MobileNetV1 or ResNet50. It determines which BodyPix architecture to load.
+      <br><br>
+      <b>outputStride: </b>Can be one of 8, 16, 32 (Stride 16, 32 are supported for the ResNet architecture and stride 8, and 16 are supported for the MobileNetV1 architecture). It specifies the output stride of the BodyPix model. <b>The smaller the value, the larger the output resolution, and more accurate the model at the cost of speed. A larger value results in a smaller model and faster prediction time but lower accuracy.</b>
+      <br><br>
+      <b>multiplier: </b>Can be one of 1.0, 0.75, or 0.50 (The value is used only by the MobileNetV1 architecture and not by the ResNet architecture). It is the float multiplier for the depth (number of channels) for all convolution ops. The larger the value, the larger the size of the layers, and more accurate the model at the cost of speed. <b>A smaller value results in a smaller model and faster prediction time but lower accuracy.</b>
+      <br><br>
+      <b>quantBytes: </b>This argument controls the bytes used for weight quantization. A larger value leads to highest accuracy and original model size.
+      <br>
+
+      <h4><u>Segmentation params</u></h5>
+    
+      <b>internalResolution: </b>Defaults to medium. The internal resolution percentage that the input is resized to before inference. <b>The larger the internalResolution the more accurate the model at the cost of slower prediction times.</b>
+      <br><br>
+      <b>segmentationThreshold: </b>Defaults to 0.7. Must be between 0 and 1. For each pixel, the model estimates a score between 0 and 1 that indicates how confident it is that part of a person is displayed in that pixel. This segmentationThreshold is used to convert these values to binary 0 or 1s by determining the minimum value a pixel's score must have to be considered part of a person. <b>In essence, a higher value will create a tighter crop around a person but may result in some pixels being that are part of a person being excluded from the returned segmentation mask.</b>
+      <br>
+      <h4><u>Segmentation params</u></h5>
+    
+      <b>backgroundBlurAmount: </b>How many pixels in the background blend into each other. Defaults to 3. Should be an integer between 1 and 20.
+      <br><br>
+      <b>edgeBlurAmount: </b>How many pixels to blur on the edge between the person and the background by. Defaults to 3. Should be an integer between 0 and 20.
+ 
+      <br><br>
+      <a href="https://github.com/tensorflow/tfjs-models/tree/master/body-pix">more details...</a>
+    </p>
+  </fieldset>
+  <br><br><br>
+  <!-- <img id="image" width="640" height="360" src="nature.jpeg" alt="Image context"> -->
+</body>
+<script src="bg_replacement.js"></script>
+</html>
